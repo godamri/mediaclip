@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/godamri/mediaclip/pkg/fs"
 )
@@ -100,8 +101,14 @@ func ValidatePayload(p JobPayload) error {
 	if !fs.FileExists(p.Assets.SubtitleFile) {
 		return fmt.Errorf("subtitle_file not found: %s", p.Assets.SubtitleFile)
 	}
+	if strings.Contains(p.Assets.SubtitleFile, "'") {
+		return fmt.Errorf("subtitle_file must not contain single quotes: %s", p.Assets.SubtitleFile)
+	}
 	if p.Config.Hook.FontFile != "" && !fs.FileExists(p.Config.Hook.FontFile) {
 		return fmt.Errorf("font_file not found: %s", p.Config.Hook.FontFile)
+	}
+	if strings.Contains(p.Config.Hook.FontFile, "'") {
+		return fmt.Errorf("font_file must not contain single quotes: %s", p.Config.Hook.FontFile)
 	}
 	if p.Config.Trim.StartSec < 0 {
 		return errors.New("trim.start_sec must be >= 0")
@@ -188,8 +195,14 @@ func ValidateMergePayload(p JobPayload) error {
 		if c.Hook.FontFile != "" && !fs.FileExists(c.Hook.FontFile) {
 			return fmt.Errorf("clips[%d].hook.font_file not found: %s", i, c.Hook.FontFile)
 		}
+		if strings.Contains(c.Hook.FontFile, "'") {
+			return fmt.Errorf("clips[%d].hook.font_file must not contain single quotes: %s", i, c.Hook.FontFile)
+		}
 		if c.Hook.Image != "" && !fs.FileExists(c.Hook.Image) {
 			return fmt.Errorf("clips[%d].hook.image not found: %s", i, c.Hook.Image)
+		}
+		if strings.Contains(c.Hook.Image, "'") {
+			return fmt.Errorf("clips[%d].hook.image must not contain single quotes: %s", i, c.Hook.Image)
 		}
 	}
 	if err := validateThumbnailConfig(p.Config.Thumbnail); err != nil {

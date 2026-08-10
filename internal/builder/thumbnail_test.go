@@ -2,6 +2,7 @@ package builder
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -200,5 +201,27 @@ func TestFontPostScriptName(t *testing.T) {
 	}
 	if name == "" {
 		t.Error("expected non-empty PostScript name")
+	}
+}
+
+func TestFontPostScriptName_CorruptFontNoPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("PANIC on corrupt font: %v", r)
+		}
+	}()
+	dir := t.TempDir()
+	hdr := make([]byte, 12+16)
+	hdr[0], hdr[1] = 0x00, 0x01
+	hdr[4], hdr[5] = 0x00, 0x01
+	copy(hdr[12:16], "name")
+	copy(hdr[20:24], []byte{0xFF, 0xFF, 0xFF, 0xFF})
+	copy(hdr[24:28], []byte{0xFF, 0xFF, 0xFF, 0xFF})
+	f := filepath.Join(dir, "corrupt.ttf")
+	if err := os.WriteFile(f, hdr, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := FontPostScriptName(f); err == nil {
+		t.Error("expected error for corrupt font, got nil")
 	}
 }

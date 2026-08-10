@@ -244,6 +244,9 @@ func FontPostScriptName(path string) (string, error) {
 	if nameLen == 0 {
 		return "", fmt.Errorf("no name table")
 	}
+	if uint64(nameOff)+uint64(nameLen) > uint64(len(data)) {
+		return "", fmt.Errorf("name table out of bounds")
+	}
 
 	nt := data[nameOff : nameOff+nameLen]
 	if len(nt) < 6 {

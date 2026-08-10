@@ -306,3 +306,46 @@ func TestValidateThumbnailConfig_ValidPositions(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePayload_RejectsSingleQuoteInFilterPaths(t *testing.T) {
+	dir := t.TempDir()
+	v := filepath.Join(dir, "video.mp4")
+	s := filepath.Join(dir, "sub.ass")
+	f := filepath.Join(dir, "font.ttf")
+	if err := os.WriteFile(v, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(s, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	base := JobPayload{
+		JobID: "q", Assets: Assets{SourceVideo: v, SubtitleFile: s},
+		OutputPath: filepath.Join(dir, "out.mp4"),
+		Config: Config{
+			Trim:   TrimConfig{StartSec: 0, EndSec: 10},
+			Canvas: CanvasConfig{Width: 1080, Height: 1920},
+		},
+	}
+
+	p := base
+	p.Assets.SubtitleFile = filepath.Join(dir, "sub'quoted.ass")
+	os.WriteFile(p.Assets.SubtitleFile, []byte("x"), 0644)
+	if err := ValidatePayload(p); err == nil {
+		t.Error("expected error for single quote in subtitle_file")
+	}
+
+	p = base
+	p.Config.Hook.FontFile = filepath.Join(dir, "font'quoted.ttf")
+	os.WriteFile(p.Config.Hook.FontFile, []byte("x"), 0644)
+	if err := ValidatePayload(p); err == nil {
+		t.Error("expected error for single quote in font_file")
+	}
+
+	if err := ValidatePayload(base); err != nil {
+		t.Errorf("valid payload rejected: %v", err)
+	}
+}

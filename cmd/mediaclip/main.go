@@ -279,6 +279,10 @@ func generateThumbnail(payload config.JobPayload, source string, trim config.Tri
 			base += fmt.Sprintf("_%d", idx)
 		}
 		thumbPath = base + "_thumb.jpg"
+	} else if idx >= 0 {
+		ext := filepath.Ext(thumbPath)
+		base := strings.TrimSuffix(thumbPath, ext)
+		thumbPath = base + fmt.Sprintf("_%d", idx) + ext
 	}
 
 	fontsDir := filepath.Dir(hook.FontFile)
