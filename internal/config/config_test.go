@@ -269,3 +269,40 @@ func TestValidatePayload_ValidFull(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestValidateThumbnailConfig_InvalidPosition(t *testing.T) {
+	dir := t.TempDir()
+	video := filepath.Join(dir, "video.mp4")
+	sub := filepath.Join(dir, "sub.ass")
+	os.WriteFile(video, []byte("x"), 0644)
+	os.WriteFile(sub, []byte("x"), 0644)
+
+	p := JobPayload{
+		JobID:      "test",
+		Assets:     Assets{SourceVideo: video, SubtitleFile: sub},
+		OutputPath: "/tmp/out.mp4",
+		Config: Config{
+			Trim:      TrimConfig{StartSec: 1, EndSec: 5},
+			Canvas:    CanvasConfig{Width: 1080, Height: 1920},
+			Thumbnail: ThumbnailConfig{Position: "somewhere-else"},
+		},
+	}
+	err := ValidatePayload(p)
+	if err == nil || err.Error() != "unsupported thumbnail.position: somewhere-else" {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateThumbnailConfig_ValidPositions(t *testing.T) {
+	positions := []string{
+		"auto", "center",
+		"top-left", "top-center", "top-right",
+		"middle-left", "middle-center", "middle-right",
+		"bottom-left", "bottom-center", "bottom-right",
+	}
+	for _, pos := range positions {
+		if !ValidThumbPosition(pos) && pos != "auto" {
+			t.Errorf("position %s should be valid", pos)
+		}
+	}
+}

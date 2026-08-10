@@ -1,0 +1,30 @@
+{
+  "job_id": "demo_thumbnail",
+  "assets": {
+    "source_video": "yt.mp4",
+    "subtitle_file": "demo/sub_line.ass"
+  },
+  "config": {
+    "trim": {
+      "start_sec": 24.56,
+      "end_sec": 42.07
+    },
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "bg_mode": "blur"
+    },
+    "hook": {
+      "text": "Pujian susah didapat, tapi tetap bikin ngakak",
+      "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+      "font_size": 80,
+      "font_color": "white"
+    },
+    "thumbnail": {
+      "position": "auto",
+      "text_color": "#FFFFFF",
+      "highlight_color": "#FFD166"
+    }
+  },
+  "output_path": "demo/output_thumbnail.mp4"
+}

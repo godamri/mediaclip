@@ -42,10 +42,20 @@ type HookConfig struct {
 	Image       string   `json:"image,omitempty"`
 }
 
+type ThumbnailConfig struct {
+	Path           string  `json:"path,omitempty"`
+	Position       string  `json:"position,omitempty"`
+	TextColor      string  `json:"text_color,omitempty"`
+	HighlightColor string  `json:"highlight_color,omitempty"`
+	FontSize       float64 `json:"font_size,omitempty"`
+	Padding        int     `json:"padding,omitempty"`
+}
+
 type Config struct {
-	Trim   TrimConfig   `json:"trim"`
-	Canvas CanvasConfig `json:"canvas"`
-	Hook   HookConfig   `json:"hook"`
+	Trim      TrimConfig      `json:"trim"`
+	Canvas    CanvasConfig    `json:"canvas"`
+	Hook      HookConfig      `json:"hook"`
+	Thumbnail ThumbnailConfig `json:"thumbnail,omitempty"`
 }
 
 type ClipConfig struct {
@@ -110,7 +120,34 @@ func ValidatePayload(p JobPayload) error {
 	if (p.Config.Hook.Text != "" || len(p.Config.Hook.Lines) > 0) && p.Config.Hook.FontSize <= 0 {
 		return errors.New("hook.font_size must be positive")
 	}
+	if err := validateThumbnailConfig(p.Config.Thumbnail); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateThumbnailConfig(t ThumbnailConfig) error {
+	if t.Position != "" && t.Position != "auto" && !ValidThumbPosition(t.Position) {
+		return fmt.Errorf("unsupported thumbnail.position: %s", t.Position)
+	}
+	if t.Padding < 0 {
+		return errors.New("thumbnail.padding must be >= 0")
+	}
+	if t.FontSize < 0 {
+		return errors.New("thumbnail.font_size must be >= 0")
+	}
+	return nil
+}
+
+func ValidThumbPosition(pos string) bool {
+	switch pos {
+	case "center",
+		"top-left", "top-center", "top-right",
+		"middle-left", "middle-center", "middle-right",
+		"bottom-left", "bottom-center", "bottom-right":
+		return true
+	}
+	return false
 }
 
 func IsMerge(p JobPayload) bool {
@@ -154,6 +191,9 @@ func ValidateMergePayload(p JobPayload) error {
 		if c.Hook.Image != "" && !fs.FileExists(c.Hook.Image) {
 			return fmt.Errorf("clips[%d].hook.image not found: %s", i, c.Hook.Image)
 		}
+	}
+	if err := validateThumbnailConfig(p.Config.Thumbnail); err != nil {
+		return err
 	}
 	return nil
 }

@@ -86,11 +86,18 @@ PORT=9090 ./mediaclip         HTTP server on :9090
       "font_size": 80,
       "font_color": "white",
       "duration": 1.5
+    },
+    "thumbnail": {
+      "position": "auto",
+      "text_color": "#FFFFFF",
+      "highlight_color": "#FFD166"
     }
   },
   "output_path": "/path/to/output.mp4"
 }
 ```
+
+> Every successful render also produces a thumbnail at `<output>_thumb.jpg` (single) or `<output>_N_thumb.jpg` per clip (merge). Response includes `thumbnail` / `thumbnails` fields. See [Thumbnails](#thumbnails).
 
 ### Merge clips
 
@@ -174,6 +181,40 @@ Hook renders only when at least one of `text` or `lines` is provided AND `font_f
 | `accent_text` | string | — | Word to highlight in accent color |
 | `accent_color` | string | — | Color for accent text |
 | `image` | string | — | Hook background image (merge mode) |
+
+## Thumbnails
+
+Every successful render (single + merge) also produces a JPG thumbnail automatically when the hook has `text`/`lines` + `font_file`.
+
+- **Single** → 1 thumbnail, path in response `thumbnail`.
+- **Merge** → 1 thumbnail per clip, path list in response `thumbnails` (`<output>_N_thumb.jpg`).
+- **Frame**: random timestamp inside the clip trim range, picked from the source video before rendering.
+- **Size**: same as `canvas`.
+- **Position**: 9-grid, default `auto` = pure random; override via `thumbnail.position`.
+- **Longest word**: rendered in `highlight_color` inline via libass `{\c}` override.
+
+### `config.thumbnail`
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | `<output>_thumb.jpg` | Thumbnail output path (merge: per-clip `_N_thumb.jpg` when unset) |
+| `position` | string | `auto` | `auto` or `top-left`, `top-center`, `top-right`, `middle-left`, `center`, `middle-center`, `middle-right`, `bottom-left`, `bottom-center`, `bottom-right` |
+| `text_color` | string | random palette | Base text color (`#RRGGBB`) |
+| `highlight_color` | string | random palette | Longest-word color (`#RRGGBB`) |
+| `font_size` | float | `hook.font_size` | Thumbnail font size |
+| `padding` | int | `40` | Edge margin (px) |
+
+Default palette (boring modern enterprise, picked randomly unless overridden):
+
+| Base | Highlight |
+|---|---|
+| `#FFFFFF` | `#2563EB` |
+| `#F8FAFC` | `#475569` |
+| `#FFFFFF` | `#1E40AF` |
+| `#F1F5F9` | `#334155` |
+| `#FFFFFF` | `#0EA5E9` |
+
+**Sample:** `samples/thumbnail.json`
 
 ## Callback / Webhook
 
@@ -316,6 +357,7 @@ python3 validate_subtitles.py  # Subtitle timeline validation
 | `samples/sub_word.json` | Word-by-word subtitles |
 | `samples/sub_karaoke_acc.json` | Karaoke with accent color |
 | `samples/sub_karaoke_dynamic.json` | Dynamic word highlight |
+| `samples/thumbnail.json` | Thumbnail generation |
 | `samples/merge.json` | 2-clip merge |
 | `samples/merge_multi.json` | 4-clip merge |
 
