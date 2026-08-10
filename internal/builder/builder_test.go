@@ -296,11 +296,27 @@ func TestBuildSectionSegmentArgs_Contain(t *testing.T) {
 	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
 	args := BuildSectionSegmentArgs(s, canvas, "/tmp/v.ass", "/tmp/sec.mp4", 2)
 	fc := getFlag(t, args, "-filter_complex")
-	if strings.Contains(fc, "force_original_aspect_ratio=increase") {
-		t.Errorf("contain must not crop, got: %s", fc)
+	if !strings.Contains(fc, "force_original_aspect_ratio=decrease") {
+		t.Errorf("contain must keep fg contained, got: %s", fc)
 	}
 	if strings.Contains(fc, "boxblur") {
-		t.Errorf("contain must not blur, got: %s", fc)
+		t.Errorf("contain must not blur when canvas bg_mode is empty, got: %s", fc)
+	}
+	if !strings.Contains(fc, "crop=1080:1920") {
+		t.Errorf("contain bg must fill the canvas, got: %s", fc)
+	}
+}
+
+func TestBuildSectionSegmentArgs_ContainWithBlurBg(t *testing.T) {
+	s := config.SectionConfig{
+		Image: "/tmp/slide.jpg", Audio: "/tmp/voice.mp3", SubtitleFile: "/tmp/v.ass",
+		BgFill: "contain",
+	}
+	canvas := config.CanvasConfig{Width: 1080, Height: 1920, BgMode: "blur"}
+	args := BuildSectionSegmentArgs(s, canvas, "/tmp/v.ass", "/tmp/sec.mp4", 2)
+	fc := getFlag(t, args, "-filter_complex")
+	if !strings.Contains(fc, "boxblur") {
+		t.Errorf("contain with bg_mode=blur must blur the bg, got: %s", fc)
 	}
 }
 

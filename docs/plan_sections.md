@@ -106,7 +106,7 @@ ffmpeg -loop 1 -t <audio_dur> -i slide.jpg \
 - `<audio_dur>` comes from `executor.ProbeDuration(audio)`.
 - `bg_fill`:
   - `cover` (default) → scale increase + crop (existing bg pattern)
-  - `contain` → scale decrease only, no crop; pad via canvas bg (blur or solid)
+  - `contain` → bg fills canvas (scale increase + crop, blurred if `bg_mode: blur`), fg contained (scale decrease)
   - `blur` → cover + `boxblur` on bg layer
 - ASS burned here, hook drawtext on top (existing `buildDrawtext`).
 - Temp dir: `os.MkdirTemp("", "mediaclip_sections_*")`, cleaned after.

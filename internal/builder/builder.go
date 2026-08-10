@@ -320,9 +320,14 @@ func BuildSectionSegmentArgs(s config.SectionConfig, canvas config.CanvasConfig,
 
 	switch bgMode {
 	case "contain":
+		bgFill := ""
+		if canvas.BgMode == "blur" {
+			bgFill = ",boxblur=10:5"
+		}
+		filters = append(filters,
+			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d%s[bg]", w, h, w, h, bgFill))
 		filters = append(filters,
 			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=decrease[fg]", w, h))
-		filters = append(filters, fmt.Sprintf("[0:v]null[bg]"))
 	default:
 		filters = append(filters,
 			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d%s[bg]", w, h, w, h, blur))
