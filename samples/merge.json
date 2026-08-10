@@ -1,0 +1,45 @@
+{
+  "job_id": "demo_merge",
+  "config": {
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "bg_mode": "blur"
+    }
+  },
+  "clips": [
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 24.56,
+        "end_sec": 30.0
+      },
+      "hook": {
+        "text": "CLIP 1",
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    },
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 30.0,
+        "end_sec": 36.0
+      },
+      "hook": {
+        "text": "CLIP 2",
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    }
+  ],
+  "output_path": "demo/output_merge.mp4"
+}

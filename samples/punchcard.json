@@ -1,0 +1,32 @@
+{
+  "job_id": "demo_punchcard",
+  "assets": {
+    "source_video": "yt.mp4",
+    "subtitle_file": "demo/sub_line.ass"
+  },
+  "config": {
+    "trim": {
+      "start_sec": 24.56,
+      "end_sec": 42.07
+    },
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "bg_mode": "blur"
+    },
+    "hook": {
+      "lines": [
+        "MAU DIPUJI?"
+      ],
+      "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+      "font_size": 92,
+      "font_color": "white",
+      "box_bg": "black@0.7",
+      "box_padding": 28,
+      "stroke_width": 4,
+      "shadow": true,
+      "duration": 1.5
+    }
+  },
+  "output_path": "demo/output_punchcard.mp4"
+}

@@ -1,0 +1,28 @@
+# Binary
+/mediaclip
+/mediaclip.exe
+
+# Output artifacts
+demo/
+*.mp4
+*.mov
+*.avi
+*.mkv
+
+# IDE
+.vscode/
+.idea/
+.opencode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+
+# Agent instructions
+AGENTS.md

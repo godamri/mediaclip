@@ -1,0 +1,85 @@
+{
+  "job_id": "demo_merge_multi",
+  "config": {
+    "canvas": {
+      "width": 1080,
+      "height": 1920,
+      "bg_mode": "blur"
+    }
+  },
+  "clips": [
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 24.56,
+        "end_sec": 28.0
+      },
+      "hook": {
+        "lines": [
+          "CLIP 1"
+        ],
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    },
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 28.0,
+        "end_sec": 34.0
+      },
+      "hook": {
+        "lines": [
+          "CLIP 2"
+        ],
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    },
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 34.0,
+        "end_sec": 38.0
+      },
+      "hook": {
+        "lines": [
+          "CLIP 3"
+        ],
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    },
+    {
+      "source_video": "yt.mp4",
+      "trim": {
+        "start_sec": 38.0,
+        "end_sec": 42.0
+      },
+      "hook": {
+        "lines": [
+          "CLIP 4"
+        ],
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "font_color": "white",
+        "stroke_width": 6,
+        "shadow": true,
+        "duration": 1.0
+      }
+    }
+  ],
+  "output_path": "demo/output_merge_multi.mp4"
+}
