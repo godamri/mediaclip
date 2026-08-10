@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -49,6 +50,13 @@ func Execute(ctx context.Context, name string, args ...string) Result {
 }
 
 func ProbeDuration(ctx context.Context, file string) (float64, error) {
+	if d, err := probeDurationFFprobe(ctx, file); err == nil {
+		return d, nil
+	}
+	return probeDurationFFmpeg(ctx, file)
+}
+
+func probeDurationFFprobe(ctx context.Context, file string) (float64, error) {
 	cmd := exec.CommandContext(ctx, "ffprobe", "-v", "error",
 		"-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file)
 	var out, stderr bytes.Buffer
@@ -63,4 +71,23 @@ func ProbeDuration(ctx context.Context, file string) (float64, error) {
 		return 0, fmt.Errorf("invalid duration %q: %s", s, err)
 	}
 	return d, nil
+}
+
+// probeDurationFFmpeg parses the duration from `ffmpeg -i` stderr, used when
+// ffprobe is not installed. Returns an error if the duration cannot be found.
+func probeDurationFFmpeg(ctx context.Context, file string) (float64, error) {
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-hide_banner", "-i", file)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	_ = cmd.Run() // ffmpeg -i exits non-zero; we only care about stderr
+
+	re := regexp.MustCompile(`Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)`)
+	m := re.FindStringSubmatch(stderr.String())
+	if m == nil {
+		return 0, fmt.Errorf("ffmpeg duration: no Duration line in stderr")
+	}
+	hours, _ := strconv.ParseFloat(m[1], 64)
+	mins, _ := strconv.ParseFloat(m[2], 64)
+	secs, _ := strconv.ParseFloat(m[3], 64)
+	return hours*3600 + mins*60 + secs, nil
 }

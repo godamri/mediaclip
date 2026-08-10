@@ -23,11 +23,13 @@ curl -X POST http://localhost:8080/render \
 ## Dependencies
 
 - **Go** 1.21+ (stdlib only — zero external packages)
-- **FFmpeg** with `--enable-libfreetype` (drawtext) and `--enable-libass` (ASS subtitles)
+- **FFmpeg** with `--enable-libfreetype` (drawtext) and `--enable-libass` (ASS subtitles) — required in `$PATH`
+- **FFprobe** — bundled with FFmpeg, required in `$PATH` (used to probe source video duration; MediaClip falls back to parsing `ffmpeg -i` stderr if ffprobe is missing)
 
 ```bash
 brew install homebrew-ffmpeg/ffmpeg/ffmpeg
 ffmpeg -filters 2>/dev/null | grep -E "drawtext|ass"
+ffprobe -version
 ```
 
 ## Architecture

@@ -55,7 +55,7 @@ func buildFilterComplex(p config.JobPayload) string {
 	parts := []string{bg, fg, overlay}
 
 	subFile := p.Assets.SubtitleFile
-	ass := fmt.Sprintf("[overlaid]ass=filename='%s'[subbed]", subFile)
+	ass := fmt.Sprintf("[overlaid]ass=filename='%s'[subbed]", escapeFilterPath(subFile))
 	parts = append(parts, ass)
 
 	if (p.Config.Hook.Text != "" || len(p.Config.Hook.Lines) > 0) && p.Config.Hook.FontFile != "" {
@@ -141,7 +141,7 @@ func calcY(h config.HookConfig, numLines, canvasHeight int) string {
 func buildDrawtextParams(text, color, fontFile, fontSize, yPos string, h config.HookConfig) []string {
 	p := []string{}
 	p = append(p, "text='"+escapeDrawText(text)+"'")
-	p = append(p, "fontfile='"+fontFile+"'")
+	p = append(p, "fontfile='"+escapeFilterPath(fontFile)+"'")
 	p = append(p, "fontsize="+fontSize)
 	p = append(p, "fontcolor="+color)
 	p = append(p, "x=(w-text_w)/2")
@@ -215,7 +215,7 @@ func BuildMergeFFmpegArgs(p config.JobPayload) []string {
 		if c.Hook.Image != "" {
 			filters = append(filters,
 				fmt.Sprintf("movie='%s':loop=1,setpts=PTS-STARTPTS,scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d%s[%s]",
-					c.Hook.Image, w, h, w, h, blur, imgLabel))
+					escapeFilterPath(c.Hook.Image), w, h, w, h, blur, imgLabel))
 		} else {
 			sharp := ""
 			if blur == "" {
@@ -279,6 +279,16 @@ func BuildMergeFFmpegArgs(p config.JobPayload) []string {
 
 func escapeDrawText(s string) string {
 	return strings.ReplaceAll(s, "'", "'\\\\''")
+}
+
+// escapeFilterPath escapes a filesystem path for embedding inside an FFmpeg
+// filtergraph value. Inside single quotes, `:` and `\` are still special
+// (option separator / escape char), so on Windows drive-letter paths like
+// `C:\dir\file` must be escaped to `C\:\\dir\\file`.
+func escapeFilterPath(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, ":", "\\:")
+	return s
 }
 
 func formatFloat(f float64) string {

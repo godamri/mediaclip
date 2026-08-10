@@ -241,3 +241,18 @@ func getFlag(t *testing.T, args []string, key string) string {
 	}
 	return ""
 }
+
+func TestEscapeFilterPath(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"/tmp/font.ttf", "/tmp/font.ttf"},
+		{`C:\dir\file.ass`, `C\:\\dir\\file.ass`},
+		{`C:\Users\Me\font.ttf`, `C\:\\Users\\Me\\font.ttf`},
+	}
+	for _, c := range cases {
+		if got := escapeFilterPath(c.in); got != c.want {
+			t.Errorf("escapeFilterPath(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}

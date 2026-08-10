@@ -1,11 +1,35 @@
 package builder
 
 import (
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/godamri/mediaclip/internal/config"
 )
+
+var candidateFonts = []string{
+	"/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+	"/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+	"/Library/Fonts/Arial Bold.ttf",
+	"/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+	"/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+	"/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+	`C:\Windows\Fonts\arialbd.ttf`,
+	`C:\Windows\Fonts\verdanab.ttf`,
+}
+
+func testFont(t *testing.T) string {
+	t.Helper()
+	for _, f := range candidateFonts {
+		if _, err := os.Stat(f); err == nil {
+			return f
+		}
+	}
+	t.Skipf("no known system font found on %s", runtime.GOOS)
+	return ""
+}
 
 func TestBuildThumbnailArgs(t *testing.T) {
 	args := BuildThumbnailArgs("/tmp/v.mp4", 12.5, 1080, 1920, "blur", "/tmp/t.ass", "/tmp/fonts", "/tmp/t.jpg")
@@ -39,7 +63,7 @@ func TestBuildThumbnailArgs_NoBlur(t *testing.T) {
 func TestBuildThumbnailASS_HighlightsLongestWord(t *testing.T) {
 	hook := config.HookConfig{
 		Text:     "Pujian susah didapat",
-		FontFile: "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+		FontFile: testFont(t),
 		FontSize: 80,
 	}
 	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
@@ -63,7 +87,7 @@ func TestBuildThumbnailASS_HighlightsLongestWord(t *testing.T) {
 func TestBuildThumbnailASS_Positions(t *testing.T) {
 	hook := config.HookConfig{
 		Text:     "test",
-		FontFile: "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+		FontFile: testFont(t),
 		FontSize: 40,
 	}
 	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
@@ -97,7 +121,7 @@ func TestBuildThumbnailASS_Positions(t *testing.T) {
 func TestBuildThumbnailASS_MultiLine(t *testing.T) {
 	hook := config.HookConfig{
 		Lines:    []string{"Pujian susah didapat,", "tapi tetap bikin ngakak!"},
-		FontFile: "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+		FontFile: testFont(t),
 		FontSize: 60,
 	}
 	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
@@ -122,7 +146,7 @@ func TestBuildThumbnailASS_MultiLine(t *testing.T) {
 func TestBuildThumbnailASS_CustomFontSize(t *testing.T) {
 	hook := config.HookConfig{
 		Text:     "test",
-		FontFile: "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+		FontFile: testFont(t),
 		FontSize: 40,
 	}
 	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
@@ -170,7 +194,7 @@ func TestAssColor(t *testing.T) {
 }
 
 func TestFontPostScriptName(t *testing.T) {
-	name, err := FontPostScriptName("/System/Library/Fonts/Supplemental/Verdana Bold.ttf")
+	name, err := FontPostScriptName(testFont(t))
 	if err != nil {
 		t.Fatal(err)
 	}

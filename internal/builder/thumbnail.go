@@ -66,9 +66,9 @@ func BuildThumbnailArgs(source string, ts float64, w, h int, bgMode, assFile, fo
 	bg := fmt.Sprintf("%s%s[bg]", bgScale, blur)
 	fg := fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=decrease[fg]", w, h)
 	overlay := "[bg][fg]overlay=(W-w)/2:(H-h)/2[ov]"
-	ass := fmt.Sprintf("[ov]ass=filename='%s'", assFile)
+	ass := fmt.Sprintf("[ov]ass=filename='%s'", escapeFilterPath(assFile))
 	if fontsDir != "" {
-		ass += ":fontsdir='" + fontsDir + "'"
+		ass += ":fontsdir='" + escapeFilterPath(fontsDir) + "'"
 	}
 	ass += "[out]"
 
