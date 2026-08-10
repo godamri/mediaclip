@@ -349,3 +349,74 @@ func TestValidatePayload_RejectsSingleQuoteInFilterPaths(t *testing.T) {
 		t.Errorf("valid payload rejected: %v", err)
 	}
 }
+
+func TestValidateSectionsPayload_Valid(t *testing.T) {
+	dir := t.TempDir()
+	img := filepath.Join(dir, "slide.jpg")
+	aud := filepath.Join(dir, "voice.mp3")
+	sub := filepath.Join(dir, "voice.ass")
+	font := filepath.Join(dir, "font.ttf")
+	for _, p := range []string{img, aud, sub, font} {
+		if err := os.WriteFile(p, []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	p := JobPayload{
+		JobID: "s", Mode: "sections", OutputPath: filepath.Join(dir, "out.mp4"),
+		Config: Config{Canvas: CanvasConfig{Width: 1080, Height: 1920}},
+		Sections: []SectionConfig{
+			{Image: img, Audio: aud, SubtitleFile: sub, BgFill: "cover",
+				Hook: HookConfig{Text: "hi", FontFile: font, FontSize: 80}},
+		},
+	}
+	if err := ValidateSectionsPayload(p); err != nil {
+		t.Errorf("expected valid, got: %v", err)
+	}
+}
+
+func TestValidateSectionsPayload_Errors(t *testing.T) {
+	dir := t.TempDir()
+	img := filepath.Join(dir, "slide.jpg")
+	aud := filepath.Join(dir, "voice.mp3")
+	sub := filepath.Join(dir, "voice.ass")
+	for _, p := range []string{img, aud, sub} {
+		if err := os.WriteFile(p, []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	base := JobPayload{
+		JobID: "s", Mode: "sections", OutputPath: filepath.Join(dir, "out.mp4"),
+		Config: Config{Canvas: CanvasConfig{Width: 1080, Height: 1920}},
+		Sections: []SectionConfig{
+			{Image: img, Audio: aud, SubtitleFile: sub},
+		},
+	}
+
+	cases := []struct {
+		name string
+		mut  func(*JobPayload)
+	}{
+		{"no sections", func(p *JobPayload) { p.Sections = nil }},
+		{"missing image", func(p *JobPayload) { p.Sections[0].Image = "" }},
+		{"missing audio", func(p *JobPayload) { p.Sections[0].Audio = "" }},
+		{"missing subtitle", func(p *JobPayload) { p.Sections[0].SubtitleFile = "" }},
+		{"bad bg_fill", func(p *JobPayload) { p.Sections[0].BgFill = "stretch" }},
+		{"quote in image", func(p *JobPayload) { p.Sections[0].Image = filepath.Join(dir, "a'b.jpg") }},
+	}
+	for _, c := range cases {
+		p := base
+		c.mut(&p)
+		if err := ValidateSectionsPayload(p); err == nil {
+			t.Errorf("%s: expected error", c.name)
+		}
+	}
+
+	if !IsSections(base) {
+		t.Error("IsSections should be true for mode=sections")
+	}
+	if IsSections(JobPayload{}) {
+		t.Error("IsSections should be false for empty payload")
+	}
+}

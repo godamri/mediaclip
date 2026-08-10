@@ -58,6 +58,18 @@ func PickThumbColors(thumb config.ThumbnailConfig) (string, string) {
 }
 
 func BuildThumbnailArgs(source string, ts float64, w, h int, bgMode, assFile, fontsDir, out string) []string {
+	args := []string{"-ss", formatFloat(ts)}
+	args = append(args, buildThumbnailImgArgs(source, w, h, bgMode, assFile, fontsDir, out)...)
+	return args
+}
+
+// BuildImageThumbnailArgs renders a thumbnail from a still image source
+// (no seeking, no video probing needed).
+func BuildImageThumbnailArgs(source string, w, h int, bgMode, assFile, fontsDir, out string) []string {
+	return buildThumbnailImgArgs(source, w, h, bgMode, assFile, fontsDir, out)
+}
+
+func buildThumbnailImgArgs(source string, w, h int, bgMode, assFile, fontsDir, out string) []string {
 	bgScale := fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", w, h, w, h)
 	blur := ""
 	if bgMode == "blur" {
@@ -73,7 +85,6 @@ func BuildThumbnailArgs(source string, ts float64, w, h int, bgMode, assFile, fo
 	ass += "[out]"
 
 	return []string{
-		"-ss", formatFloat(ts),
 		"-i", source,
 		"-filter_complex", strings.Join([]string{bg, fg, overlay, ass}, ";"),
 		"-map", "[out]",

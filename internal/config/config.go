@@ -10,8 +10,8 @@ import (
 )
 
 type Assets struct {
-	SourceVideo   string `json:"source_video"`
-	SubtitleFile  string `json:"subtitle_file"`
+	SourceVideo  string `json:"source_video"`
+	SubtitleFile string `json:"subtitle_file"`
 }
 
 type TrimConfig struct {
@@ -20,9 +20,9 @@ type TrimConfig struct {
 }
 
 type CanvasConfig struct {
-	Width   int    `json:"width"`
-	Height  int    `json:"height"`
-	BgMode  string `json:"bg_mode"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	BgMode string `json:"bg_mode"`
 }
 
 type HookConfig struct {
@@ -65,13 +65,23 @@ type ClipConfig struct {
 	Hook        HookConfig `json:"hook"`
 }
 
+type SectionConfig struct {
+	Image        string     `json:"image"`
+	Audio        string     `json:"audio"`
+	SubtitleFile string     `json:"subtitle_file"`
+	BgFill       string     `json:"bg_fill,omitempty"`
+	Hook         HookConfig `json:"hook"`
+}
+
 type JobPayload struct {
-	JobID       string        `json:"job_id"`
-	CallbackURL string        `json:"callback_url,omitempty"`
-	Assets      Assets        `json:"assets,omitempty"`
-	Config      Config        `json:"config,omitempty"`
-	Clips       []ClipConfig  `json:"clips,omitempty"`
-	OutputPath  string        `json:"output_path"`
+	JobID       string          `json:"job_id"`
+	CallbackURL string          `json:"callback_url,omitempty"`
+	Mode        string          `json:"mode,omitempty"`
+	Assets      Assets          `json:"assets,omitempty"`
+	Config      Config          `json:"config,omitempty"`
+	Clips       []ClipConfig    `json:"clips,omitempty"`
+	Sections    []SectionConfig `json:"sections,omitempty"`
+	OutputPath  string          `json:"output_path"`
 }
 
 func ParsePayload(data []byte) (JobPayload, error) {
@@ -203,6 +213,80 @@ func ValidateMergePayload(p JobPayload) error {
 		}
 		if strings.Contains(c.Hook.Image, "'") {
 			return fmt.Errorf("clips[%d].hook.image must not contain single quotes: %s", i, c.Hook.Image)
+		}
+	}
+	if err := validateThumbnailConfig(p.Config.Thumbnail); err != nil {
+		return err
+	}
+	return nil
+}
+
+func IsSections(p JobPayload) bool {
+	return p.Mode == "sections"
+}
+
+func ValidBgFill(s string) bool {
+	switch s {
+	case "cover", "contain", "blur":
+		return true
+	}
+	return false
+}
+
+func ValidateSectionsPayload(p JobPayload) error {
+	if p.JobID == "" {
+		return errors.New("job_id is required")
+	}
+	if p.OutputPath == "" {
+		return errors.New("output_path is required")
+	}
+	if p.Config.Canvas.Width <= 0 || p.Config.Canvas.Height <= 0 {
+		return errors.New("canvas dimensions must be positive")
+	}
+	switch p.Config.Canvas.BgMode {
+	case "blur", "":
+	default:
+		return fmt.Errorf("unsupported canvas.bg_mode: %s", p.Config.Canvas.BgMode)
+	}
+	if len(p.Sections) == 0 {
+		return errors.New("at least one section is required")
+	}
+	for i, s := range p.Sections {
+		if s.Image == "" {
+			return fmt.Errorf("sections[%d].image is required", i)
+		}
+		if !fs.FileExists(s.Image) {
+			return fmt.Errorf("sections[%d].image not found: %s", i, s.Image)
+		}
+		if strings.Contains(s.Image, "'") {
+			return fmt.Errorf("sections[%d].image must not contain single quotes: %s", i, s.Image)
+		}
+		if s.Audio == "" {
+			return fmt.Errorf("sections[%d].audio is required", i)
+		}
+		if !fs.FileExists(s.Audio) {
+			return fmt.Errorf("sections[%d].audio not found: %s", i, s.Audio)
+		}
+		if s.SubtitleFile == "" {
+			return fmt.Errorf("sections[%d].subtitle_file is required", i)
+		}
+		if !fs.FileExists(s.SubtitleFile) {
+			return fmt.Errorf("sections[%d].subtitle_file not found: %s", i, s.SubtitleFile)
+		}
+		if strings.Contains(s.SubtitleFile, "'") {
+			return fmt.Errorf("sections[%d].subtitle_file must not contain single quotes: %s", i, s.SubtitleFile)
+		}
+		if s.BgFill != "" && !ValidBgFill(s.BgFill) {
+			return fmt.Errorf("sections[%d].bg_fill unsupported: %s", i, s.BgFill)
+		}
+		if (s.Hook.Text != "" || len(s.Hook.Lines) > 0) && s.Hook.FontSize <= 0 {
+			return fmt.Errorf("sections[%d].hook.font_size must be positive", i)
+		}
+		if s.Hook.FontFile != "" && !fs.FileExists(s.Hook.FontFile) {
+			return fmt.Errorf("sections[%d].hook.font_file not found: %s", i, s.Hook.FontFile)
+		}
+		if strings.Contains(s.Hook.FontFile, "'") {
+			return fmt.Errorf("sections[%d].hook.font_file must not contain single quotes: %s", i, s.Hook.FontFile)
 		}
 	}
 	if err := validateThumbnailConfig(p.Config.Thumbnail); err != nil {

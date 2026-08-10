@@ -256,3 +256,59 @@ func TestEscapeFilterPath(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildSectionSegmentArgs(t *testing.T) {
+	s := config.SectionConfig{
+		Image:        "/tmp/slide.jpg",
+		Audio:        "/tmp/voice.mp3",
+		SubtitleFile: "/tmp/voice.ass",
+		BgFill:       "blur",
+		Hook: config.HookConfig{
+			Text: "donal trum makan cobek", FontFile: "/tmp/font.ttf", FontSize: 80,
+		},
+	}
+	canvas := config.CanvasConfig{Width: 1080, Height: 1920, BgMode: "blur"}
+	args := BuildSectionSegmentArgs(s, canvas, "/tmp/voice.ass", "/tmp/sec.mp4", 3.5)
+
+	assertHas(t, args, "-loop", "1")
+	assertHas(t, args, "-t", "3.5")
+	assertHas(t, args, "-i", "/tmp/slide.jpg")
+	assertHas(t, args, "-i", "/tmp/voice.mp3")
+	assertHas(t, args, "-y", "/tmp/sec.mp4")
+
+	fc := getFlag(t, args, "-filter_complex")
+	if !strings.Contains(fc, "ass=filename='/tmp/voice.ass'") {
+		t.Errorf("missing ass filter, got: %s", fc)
+	}
+	if !strings.Contains(fc, "drawtext=") {
+		t.Errorf("missing drawtext, got: %s", fc)
+	}
+	if !strings.Contains(fc, "boxblur=10:5") {
+		t.Errorf("missing boxblur for bg_fill=blur, got: %s", fc)
+	}
+}
+
+func TestBuildSectionSegmentArgs_Contain(t *testing.T) {
+	s := config.SectionConfig{
+		Image: "/tmp/slide.jpg", Audio: "/tmp/voice.mp3", SubtitleFile: "/tmp/v.ass",
+		BgFill: "contain",
+	}
+	canvas := config.CanvasConfig{Width: 1080, Height: 1920}
+	args := BuildSectionSegmentArgs(s, canvas, "/tmp/v.ass", "/tmp/sec.mp4", 2)
+	fc := getFlag(t, args, "-filter_complex")
+	if strings.Contains(fc, "force_original_aspect_ratio=increase") {
+		t.Errorf("contain must not crop, got: %s", fc)
+	}
+	if strings.Contains(fc, "boxblur") {
+		t.Errorf("contain must not blur, got: %s", fc)
+	}
+}
+
+func TestBuildSectionConcatArgs(t *testing.T) {
+	args := BuildSectionConcatArgs("/tmp/concat.txt", "/tmp/final.mp4")
+	assertHas(t, args, "-f", "concat")
+	assertHas(t, args, "-safe", "0")
+	assertHas(t, args, "-i", "/tmp/concat.txt")
+	assertHas(t, args, "-c", "copy")
+	assertHas(t, args, "-y", "/tmp/final.mp4")
+}

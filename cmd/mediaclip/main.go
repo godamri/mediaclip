@@ -122,6 +122,28 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 
 	hasCallback := payload.CallbackURL != ""
 
+	if config.IsSections(payload) {
+		if err := config.ValidateSectionsPayload(payload); err != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, executor.Failure(fmt.Sprintf("validation failed: %s", err)))
+			return
+		}
+		if hasCallback {
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "accepted", "job_id": payload.JobID})
+			go func() {
+				result := executeSections(payload)
+				postCallback(payload.CallbackURL, result)
+			}()
+		} else {
+			result := executeSections(payload)
+			status := http.StatusOK
+			if result.Status == "error" {
+				status = http.StatusInternalServerError
+			}
+			writeJSON(w, status, result)
+		}
+		return
+	}
+
 	if config.IsMerge(payload) {
 		if err := config.ValidateMergePayload(payload); err != nil {
 			writeJSON(w, http.StatusUnprocessableEntity, executor.Failure(fmt.Sprintf("validation failed: %s", err)))
@@ -178,7 +200,13 @@ func runCLI(jsonStr string) {
 	}
 
 	var result executor.Result
-	if config.IsMerge(payload) {
+	if config.IsSections(payload) {
+		if err := config.ValidateSectionsPayload(payload); err != nil {
+			printJSON(executor.Failure(fmt.Sprintf("validation failed: %s", err)))
+			os.Exit(1)
+		}
+		result = executeSections(payload)
+	} else if config.IsMerge(payload) {
 		if err := config.ValidateMergePayload(payload); err != nil {
 			printJSON(executor.Failure(fmt.Sprintf("validation failed: %s", err)))
 			os.Exit(1)
@@ -220,23 +248,92 @@ func executeMerge(payload config.JobPayload) executor.Result {
 	ctx, cancel := context.WithTimeout(context.Background(), execTimeout)
 	defer cancel()
 
-		result := executor.Execute(ctx, "ffmpeg", args...)
-		if result.Status == "success" {
-			result.Output = payload.OutputPath
-			thumbs := []string{}
-			for i, c := range payload.Clips {
-				if thumb, err := generateThumbnail(payload, c.SourceVideo, c.Trim, c.Hook, i); err == nil {
-					thumbs = append(thumbs, thumb)
-				}
-			}
-			if len(thumbs) > 0 {
-				result.Thumbnails = thumbs
+	result := executor.Execute(ctx, "ffmpeg", args...)
+	if result.Status == "success" {
+		result.Output = payload.OutputPath
+		thumbs := []string{}
+		for i, c := range payload.Clips {
+			if thumb, err := generateThumbnail(payload, c.SourceVideo, c.Trim, c.Hook, i); err == nil {
+				thumbs = append(thumbs, thumb)
 			}
 		}
-		return result
+		if len(thumbs) > 0 {
+			result.Thumbnails = thumbs
+		}
+	}
+	return result
+}
+
+func executeSections(payload config.JobPayload) executor.Result {
+	tmpDir, err := os.MkdirTemp("", "mediaclip_sections_*")
+	if err != nil {
+		return executor.Failure(fmt.Sprintf("cannot create temp dir: %s", err))
+	}
+	defer os.RemoveAll(tmpDir)
+
+	segments := []string{}
+	for i, s := range payload.Sections {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		dur, err := executor.ProbeDuration(ctx, s.Audio)
+		cancel()
+		if err != nil {
+			return executor.Failure(fmt.Sprintf("sections[%d] probe audio: %s", i, err))
+		}
+		if dur <= 0 {
+			return executor.Failure(fmt.Sprintf("sections[%d] audio duration is 0", i))
+		}
+
+		segPath := filepath.Join(tmpDir, fmt.Sprintf("sec_%d.mp4", i))
+		args := builder.BuildSectionSegmentArgs(s, payload.Config.Canvas, s.SubtitleFile, segPath, dur)
+
+		ctx2, cancel2 := context.WithTimeout(context.Background(), execTimeout)
+		result := executor.Execute(ctx2, "ffmpeg", args...)
+		cancel2()
+		if result.Status != "success" {
+			return executor.Failure(fmt.Sprintf("sections[%d] render: %s", i, result.Error))
+		}
+		segments = append(segments, segPath)
 	}
 
+	concatFile := filepath.Join(tmpDir, "concat.txt")
+	var sb strings.Builder
+	for _, seg := range segments {
+		sb.WriteString("file '" + strings.ReplaceAll(seg, "'", "'\\''") + "'\n")
+	}
+	if err := os.WriteFile(concatFile, []byte(sb.String()), 0644); err != nil {
+		return executor.Failure(fmt.Sprintf("cannot write concat list: %s", err))
+	}
+
+	concatArgs := builder.BuildSectionConcatArgs(concatFile, payload.OutputPath)
+	ctx3, cancel3 := context.WithTimeout(context.Background(), execTimeout)
+	result := executor.Execute(ctx3, "ffmpeg", concatArgs...)
+	cancel3()
+	if result.Status != "success" {
+		return executor.Failure(fmt.Sprintf("concat: %s", result.Error))
+	}
+
+	result.Output = payload.OutputPath
+	thumbs := []string{}
+	for i, s := range payload.Sections {
+		if thumb, err := generateImageThumbnail(payload, s.Image, s.Hook, i); err == nil {
+			thumbs = append(thumbs, thumb)
+		}
+	}
+	if len(thumbs) > 0 {
+		result.Thumbnails = thumbs
+	}
+	return result
+}
+
 func generateThumbnail(payload config.JobPayload, source string, trim config.TrimConfig, hook config.HookConfig, idx int) (string, error) {
+	return generateThumbnailForSource(payload, source, trim, hook, idx, false)
+}
+
+func generateImageThumbnail(payload config.JobPayload, source string, hook config.HookConfig, idx int) (string, error) {
+	return generateThumbnailForSource(payload, source, config.TrimConfig{}, hook, idx, true)
+}
+
+func generateThumbnailForSource(payload config.JobPayload, source string, trim config.TrimConfig, hook config.HookConfig, idx int, imageSource bool) (string, error) {
 	if (hook.Text == "" && len(hook.Lines) == 0) || hook.FontFile == "" {
 		return "", fmt.Errorf("thumbnail skipped: hook text or font_file missing")
 	}
@@ -266,11 +363,6 @@ func generateThumbnail(payload config.JobPayload, source string, trim config.Tri
 	}
 	tmp.Close()
 
-	ts, err := randomFrameTS(payload, source, trim)
-	if err != nil {
-		return "", err
-	}
-
 	thumbPath := thumb.Path
 	if thumbPath == "" {
 		ext := filepath.Ext(payload.OutputPath)
@@ -286,7 +378,16 @@ func generateThumbnail(payload config.JobPayload, source string, trim config.Tri
 	}
 
 	fontsDir := filepath.Dir(hook.FontFile)
-	args := builder.BuildThumbnailArgs(source, ts, payload.Config.Canvas.Width, payload.Config.Canvas.Height, payload.Config.Canvas.BgMode, tmpPath, fontsDir, thumbPath)
+	var args []string
+	if imageSource {
+		args = builder.BuildImageThumbnailArgs(source, payload.Config.Canvas.Width, payload.Config.Canvas.Height, payload.Config.Canvas.BgMode, tmpPath, fontsDir, thumbPath)
+	} else {
+		ts, err := randomFrameTS(payload, source, trim)
+		if err != nil {
+			return "", err
+		}
+		args = builder.BuildThumbnailArgs(source, ts, payload.Config.Canvas.Width, payload.Config.Canvas.Height, payload.Config.Canvas.BgMode, tmpPath, fontsDir, thumbPath)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), execTimeout)
 	defer cancel()

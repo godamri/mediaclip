@@ -1,0 +1,32 @@
+{
+  "job_id": "sections_demo",
+  "mode": "sections",
+  "output_path": "demo/output_sections.mp4",
+  "config": { "canvas": { "width": 1080, "height": 1920, "bg_mode": "blur" } },
+  "thumbnail": { "position": "auto" },
+  "sections": [
+    {
+      "image": "demo/slide1.jpg",
+      "audio": "demo/voice1.mp3",
+      "subtitle_file": "demo/sub1.ass",
+      "bg_fill": "blur",
+      "hook": {
+        "text": "donal trum makan cobek",
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80,
+        "duration": 1.5
+      }
+    },
+    {
+      "image": "demo/slide2.jpg",
+      "audio": "demo/voice2.mp3",
+      "subtitle_file": "demo/sub2.ass",
+      "bg_fill": "cover",
+      "hook": {
+        "lines": ["baris satu", "baris dua"],
+        "font_file": "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
+        "font_size": 80
+      }
+    }
+  ]
+}

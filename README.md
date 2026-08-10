@@ -69,6 +69,14 @@ PORT=9090 ./mediaclip         HTTP server on :9090
 
 ## Payload API
 
+Three modes, selected implicitly or via `mode`:
+
+| Mode | Selector | Input | Output |
+|---|---|---|---|
+| Single | `assets` + `config` (no `clips`/`mode`) | one video clip | one video |
+| Merge | `clips[]` (no `mode`) | multiple video clips | one concatenated video |
+| Sections | `mode: "sections"` + `sections[]` | image + audio per section | one concatenated video |
+
 ### Single clip
 
 ```json
@@ -137,6 +145,44 @@ PORT=9090 ./mediaclip         HTTP server on :9090
   "output_path": "/path/to/merged.mp4"
 }
 ```
+
+### Sections (image + audio → video)
+
+Each section is an image background + audio track; duration follows the audio. Subtitles come from a per-section `.ass` file whose timestamps are relative to that section's audio (0-based) — no timing offset math needed since each section is rendered standalone before concat.
+
+```json
+{
+  "job_id": "sections_001",
+  "mode": "sections",
+  "config": { "canvas": { "width": 1080, "height": 1920, "bg_mode": "blur" } },
+  "sections": [
+    {
+      "image": "/path/to/slide1.jpg",
+      "audio": "/path/to/voice1.mp3",
+      "subtitle_file": "/path/to/voice1.ass",
+      "bg_fill": "blur",
+      "hook": {
+        "text": "donal trum makan cobek",
+        "font_file": "/path/to/font.ttf",
+        "font_size": 80
+      }
+    }
+  ],
+  "output_path": "/path/to/output.mp4"
+}
+```
+
+### `sections[]`
+
+| Field | Required | Default | Description |
+|---|---|---|---|
+| `image` | yes | — | Background image path |
+| `audio` | yes | — | Audio file path (drives section duration) |
+| `subtitle_file` | yes | — | Per-section `.ass` path, timestamps relative to section audio |
+| `bg_fill` | no | `cover` | Image fill: `cover` (crop to fill), `contain` (letterbox), `blur` (cover + blurred bg) |
+| `hook` | no | — | Same as `config.hook` |
+
+> Sections mode also produces one thumbnail per section (`<output>_N_thumb.jpg`), taken from the section image.
 
 ## Field Reference
 

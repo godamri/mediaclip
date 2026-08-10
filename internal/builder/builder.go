@@ -297,3 +297,70 @@ func formatFloat(f float64) string {
 	s = strings.TrimRight(s, ".")
 	return s
 }
+
+// BuildSectionSegmentArgs builds one ffmpeg command that renders a single
+// section (image background + audio + ASS subtitles + drawtext hook) into a
+// standalone segment file. The subtitles are burned in here, 0-based to the
+// section timeline, so concat requires no timing adjustment.
+func BuildSectionSegmentArgs(s config.SectionConfig, canvas config.CanvasConfig, assFile, out string, duration float64) []string {
+	w := canvas.Width
+	h := canvas.Height
+
+	bgMode := s.BgFill
+	if bgMode == "" {
+		bgMode = "cover"
+	}
+
+	blur := ""
+	if bgMode == "blur" || (bgMode == "cover" && canvas.BgMode == "blur") {
+		blur = ",boxblur=10:5"
+	}
+
+	filters := []string{}
+
+	switch bgMode {
+	case "contain":
+		filters = append(filters,
+			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=decrease[fg]", w, h))
+		filters = append(filters, fmt.Sprintf("[0:v]null[bg]"))
+	default:
+		filters = append(filters,
+			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d%s[bg]", w, h, w, h, blur))
+		filters = append(filters,
+			fmt.Sprintf("[0:v]scale=%d:%d:force_original_aspect_ratio=decrease[fg]", w, h))
+	}
+	filters = append(filters, "[bg][fg]overlay=(W-w)/2:(H-h)/2[ov]")
+	filters = append(filters,
+		fmt.Sprintf("[ov]ass=filename='%s'[subbed]", escapeFilterPath(assFile)))
+
+	hookLabel := "hook_v"
+	if (s.Hook.Text != "" || len(s.Hook.Lines) > 0) && s.Hook.FontFile != "" {
+		for _, part := range buildDrawtext(s.Hook, h, "subbed", hookLabel) {
+			filters = append(filters, part)
+		}
+	} else {
+		filters = append(filters, fmt.Sprintf("[subbed]null[%s]", hookLabel))
+	}
+
+	args := []string{}
+	args = append(args, "-loop", "1", "-t", formatFloat(duration), "-i", s.Image)
+	args = append(args, "-i", s.Audio)
+	args = append(args, "-filter_complex", strings.Join(filters, ";"))
+	args = append(args, "-map", "["+hookLabel+"]")
+	args = append(args, "-map", "1:a")
+	args = append(args, "-t", formatFloat(duration))
+	args = append(args, "-c:v", "libx264", "-preset", "fast", "-crf", "22")
+	args = append(args, "-c:a", "aac", "-b:a", "128k")
+	args = append(args, "-y", out)
+
+	return args
+}
+
+// BuildSectionConcatArgs builds the final ffmpeg command that concatenates
+// pre-rendered segment files (same codec/params) with stream copy.
+func BuildSectionConcatArgs(concatFile, out string) []string {
+	return []string{
+		"-f", "concat", "-safe", "0", "-i", concatFile,
+		"-c", "copy", "-y", out,
+	}
+}

@@ -225,3 +225,25 @@ func TestFontPostScriptName_CorruptFontNoPanic(t *testing.T) {
 		t.Error("expected error for corrupt font, got nil")
 	}
 }
+
+func TestBuildImageThumbnailArgs(t *testing.T) {
+	args := BuildImageThumbnailArgs("/tmp/slide.jpg", 1080, 1920, "blur", "/tmp/t.ass", "/tmp/fonts", "/tmp/t.jpg")
+	if hasFlag(args, "-ss") {
+		t.Error("image thumbnail must not use -ss")
+	}
+	assertHas(t, args, "-i", "/tmp/slide.jpg")
+	assertHas(t, args, "-frames:v", "1")
+	assertHas(t, args, "-y", "/tmp/t.jpg")
+	fc := getFlag(t, args, "-filter_complex")
+	if !strings.Contains(fc, "ass=filename='/tmp/t.ass'") {
+		t.Error("missing ass filter")
+	}
+	if !strings.Contains(fc, "boxblur=10:5") {
+		t.Error("missing boxblur")
+	}
+}
+
+func TestBuildThumbnailArgs_StillHasSS(t *testing.T) {
+	args := BuildThumbnailArgs("/tmp/v.mp4", 5, 1080, 1920, "blur", "/tmp/t.ass", "/tmp/fonts", "/tmp/t.jpg")
+	assertHas(t, args, "-ss", "5")
+}
